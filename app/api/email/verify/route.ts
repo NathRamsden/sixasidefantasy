@@ -1,6 +1,6 @@
 // app/api/email/verify/route.ts
 import { NextResponse } from 'next/server';
-import { useEmailVerificationToken } from '@/lib/emailTokens';
+import { verifyEmailToken } from '@/lib/emailTokens';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -10,17 +10,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Missing token' }, { status: 400 });
   }
 
-  const user = await useEmailVerificationToken(token);
+  try {
+    const result = await verifyEmailToken(token);
 
-  if (!user) {
+    // result should contain at least userId, maybe more depending on your implementation
     return NextResponse.json(
-      { error: 'Invalid or expired token' },
+      {
+        success: true,
+        userId: result.userId,
+      },
+      { status: 200 }
+    );
+  } catch (err: any) {
+    console.error('Verify token error', err);
+    return NextResponse.json(
+      { error: err?.message || 'Invalid or expired token' },
       { status: 400 }
     );
   }
-
-  // Redirect user to login with a little flag
-  const url = new URL('/login', req.url);
-  url.searchParams.set('verified', '1');
-  return NextResponse.redirect(url.toString());
 }
