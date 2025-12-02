@@ -1,0 +1,22 @@
+// app/dashboard/page.tsx
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
+
+export default async function DashboardPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <h1>SixASide Dashboard</h1>
+      <p>Logged in as: {user.email}</p>
+      <p>
+        Next step: we’ll add “Create League” and “Join League” buttons here, then
+        build the draft flow.
+      </p>
+    </main>
+  );
+}
