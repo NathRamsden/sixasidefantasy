@@ -143,14 +143,16 @@ export async function POST(
     });
 
     // Also create TeamPlayer record so that team "owns" the player
-    await prisma.teamPlayer.create({
-      data: {
-        teamId: userTeam.id,
-        playerId,
-        acquiredAt: new Date(),
-        active: true,
-      },
-    });
+await prisma.teamPlayer.create({
+  data: {
+    teamId: userTeam.id,
+    playerId,
+    acquiredAt: new Date(),
+    acquiredVia: 'DRAFT', // 👈 NEW – must match your enum/value in schema.prisma
+    active: true,
+  },
+});
+
 
     return NextResponse.json({ pick });
   } catch (err) {
