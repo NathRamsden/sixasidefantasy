@@ -6,12 +6,15 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const { email, password } = (await req.json()) as {
+      email?: string;
+      password?: string;
+    };
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 },
+        { error: 'Missing email or password' },
+        { status: 400 }
       );
     }
 
@@ -22,40 +25,43 @@ export async function POST(req: Request) {
     if (!user || !user.passwordHash) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
-    // Require verified email
     if (!user.emailVerifiedAt) {
       return NextResponse.json(
         { error: 'Please verify your email before logging in.' },
-        { status: 403 },
+        { status: 403 }
       );
     }
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) {
+    const passwordMatches = await bcrypt.compare(
+      password,
+      user.passwordHash
+    );
+
+    if (!passwordMatches) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
-    // Very simple session cookie (we can upgrade later)
     const cookieStore = await cookies();
-    cookieStore.set('session', user.id, {
+    cookieStore.set('sessionUserId', user.id, {
       httpOnly: true,
-      path: '/',
       sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('Login error', err);
+    console.error('Login error (app route):', err);
     return NextResponse.json(
-      { error: 'Unexpected error logging in' },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
 }
