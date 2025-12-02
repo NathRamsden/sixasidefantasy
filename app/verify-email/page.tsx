@@ -1,72 +1,75 @@
 // app/verify-email/page.tsx
 import Link from 'next/link';
-import { verifyEmailToken } from '@/lib/emailTokens';
+import { useEmailVerificationToken } from '@/lib/emailTokens';
 
 type VerifyEmailPageProps = {
+  // In Next 15/16 app router, searchParams is a Promise on the server
   searchParams: Promise<{ token?: string | string[] }>;
 };
 
-export default async function VerifyEmailPage({
-  searchParams,
-}: VerifyEmailPageProps) {
+export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
   const params = await searchParams;
-  const rawToken = params.token;
-  const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+  const tokenParam = params.token;
+  const token = Array.isArray(tokenParam) ? tokenParam[0] : tokenParam;
 
-  let heading = 'Email verification';
-  let message = '';
-  let success = false;
+  let status: 'missing' | 'invalid' | 'already' | 'ok' = 'missing';
 
   if (!token) {
-    message =
-      'This verification link is missing a token. Please check the link in your email or request a new verification email.';
+    status = 'missing';
   } else {
-    const result = await verifyEmailToken(token);
+    const result = await useEmailVerificationToken(token);
 
-    switch (result) {
-      case 'ok':
-        success = true;
-        message =
-          'Thanks! Your email has been verified. You can now log in to SixASide.';
-        break;
-      case 'already-verified':
-        success = true;
-        message =
-          'Your email was already verified. You can go ahead and log in.';
-        break;
-      case 'expired':
-        message =
-          'Sorry, this verification link has expired. Please request a new verification email.';
-        break;
-      case 'invalid':
-      default:
-        message =
-          'This verification link is invalid. It may have already been used or copied incorrectly.';
-        break;
+    if (result === 'invalid-or-expired') {
+      status = 'invalid';
+    } else if (result === 'already-verified') {
+      status = 'already';
+    } else if (result.status === 'verified') {
+      status = 'ok';
     }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-50">
-      <div className="max-w-md w-full mx-4 rounded-2xl bg-slate-900 border border-slate-700 p-8 shadow-lg">
-        <h1 className="text-2xl font-semibold mb-4 text-center">
-          {heading}
+    <main className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+        <h1 className="text-xl font-semibold">
+          {status === 'ok' && 'Email verified ✅'}
+          {status === 'already' && 'Already verified'}
+          {status === 'invalid' && 'Verification link invalid'}
+          {status === 'missing' && 'No token provided'}
         </h1>
 
-        <p
-          className={`text-sm mb-8 text-center ${
-            success ? 'text-emerald-400' : 'text-red-400'
-          }`}
-        >
-          {message}
-        </p>
+        {status === 'ok' && (
+          <p className="text-sm text-slate-300">
+            Your email has been verified and your SixASide account is ready to use.
+          </p>
+        )}
 
-        <div className="flex justify-center">
+        {status === 'already' && (
+          <p className="text-sm text-slate-300">
+            This email address was already verified. You can log in to your account.
+          </p>
+        )}
+
+        {status === 'invalid' && (
+          <p className="text-sm text-slate-300">
+            This verification link is invalid or has expired. Try registering again with
+            the same email to get a fresh link.
+          </p>
+        )}
+
+        {status === 'missing' && (
+          <p className="text-sm text-slate-300">
+            There was no verification token in the link. Please click the button directly
+            from your verification email.
+          </p>
+        )}
+
+        <div className="pt-2">
           <Link
             href="/login"
-            className="inline-flex items-center px-6 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-medium transition-colors"
+            className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-emerald-400 transition-colors"
           >
-            Back to login
+            Go to login
           </Link>
         </div>
       </div>
